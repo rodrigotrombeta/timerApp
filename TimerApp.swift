@@ -98,14 +98,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
     
     func startBlinking() {
-        guard !isBlinking else { return }
+        // Sempre parar qualquer piscar anterior antes de iniciar um novo
+        stopBlinking()
+        
         isBlinking = true
         
         guard let button = statusBarItem?.button else { return }
         var showOrange = false
+        var blinkCount = 0
+        let maxBlinks = 6 // 3 blinks completos (0.5s * 6 = 3s)
         
-        blinkTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        blinkTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
             guard let self = self else { return }
+            blinkCount += 1
+            
+            // Parar após 3 blinks completos (3 segundos)
+            if blinkCount > maxBlinks {
+                self.stopBlinking()
+                return
+            }
+            
             showOrange.toggle()
             
             if showOrange {
