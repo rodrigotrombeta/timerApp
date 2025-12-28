@@ -6,36 +6,31 @@ A simple timer application that lives in the macOS menu bar.
 - Visual countdown
 - Sound alert when each interval finishes
 - Multiple repetitions can be set
-- Icon blinks when timer finishes
+- Icon blinks when timer finishes (3 times, 3 seconds)
+- Saves last used interval and repetitions (restored on app restart)
+- Supports intervals up to 5 hours
 - Quit button in popover and context menu
 
 ## Building and Installation
 
-### Step 1: Build the app
+### Build and create the app bundle
+
+Simply run:
 
 ```shell
 ./build.sh
 ```
 
-### Step 2: Create the icon (optional, but recommended)
+This script will:
+1. Compile the app executable
+2. Create the app icon (if it doesn't exist)
+3. Create the `TimerApp.app` bundle with the icon included
 
-```shell
-./create_icon.sh
-```
+The `TimerApp.app` bundle will be created in the project root folder.
 
-This will create the `AppIcon.icns` file with the same timer icon used in the menu bar.
+### Install to Applications folder
 
-### Step 3: Create the .app bundle
-
-```shell
-./create_app_bundle.sh
-```
-
-This will create the `TimerApp.app` file in the project folder. The script automatically includes the icon if it exists.
-
-### Step 4: Install to Applications folder
-
-Drag `TimerApp.app` to the Applications folder
+   - Drag `TimerApp.app` to the Applications folder
 
 ### Alternative: Using Xcode
 
@@ -55,9 +50,9 @@ Drag `TimerApp.app` to the Applications folder
 - `TimerApp.swift` - Application entry point and menu bar configuration
 - `TimerContentView.swift` - User interface and timer logic
 - `Package.swift` - Swift Package Manager configuration
-- `build.sh` - Script to build the app
-- `create_icon.sh` - Script to create the .icns icon file
-- `create_app_bundle.sh` - Script to create the installable .app bundle
+- `build.sh` - Script to build the app, create icon, and bundle (all-in-one)
+- `create_icon.sh` - Script to create the .icns icon file (called automatically by build.sh)
+- `create_app_bundle.sh` - Script to create the installable .app bundle (functionality now included in build.sh)
 
 ## License
 
