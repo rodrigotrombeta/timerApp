@@ -9,6 +9,10 @@ struct TimerContentView: View {
     @State private var timeRemaining: Int = 0
     @State private var currentRepetition: Int = 0
     @State private var timer: Timer?
+    @State private var totalTimeHours: Int = 0
+    @State private var totalTimeMinutes: Int = 0
+    @State private var totalTimeSeconds: Int = 0
+    @State private var isEditingTotalTime: Bool = false
     
     var body: some View {
         VStack(spacing: 15) {
@@ -61,6 +65,73 @@ struct TimerContentView: View {
                         Stepper(value: $numberOfRepetitions, in: 1...100) {
                             Text("\(numberOfRepetitions)")
                         }
+                        .onChange(of: numberOfRepetitions) { _ in
+                            updateTotalTimeFromRepetitions()
+                        }
+                    }
+                    
+                    HStack {
+                        Text("Total time:")
+                        Spacer()
+                        if isEditingTotalTime {
+                            HStack(spacing: 4) {
+                                Picker("", selection: $totalTimeHours) {
+                                    ForEach(0..<25) { hour in
+                                        Text("\(hour)").tag(hour)
+                                    }
+                                }
+                                .frame(width: 50)
+                                .onChange(of: totalTimeHours) { _ in
+                                    calculateRepetitionsFromTotalTime()
+                                }
+                                Text("h")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                                
+                                Picker("", selection: $totalTimeMinutes) {
+                                    ForEach(0..<60) { minute in
+                                        Text("\(minute)").tag(minute)
+                                    }
+                                }
+                                .frame(width: 50)
+                                .onChange(of: totalTimeMinutes) { _ in
+                                    calculateRepetitionsFromTotalTime()
+                                }
+                                Text("m")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                                
+                                Picker("", selection: $totalTimeSeconds) {
+                                    ForEach(0..<60) { second in
+                                        Text("\(second)").tag(second)
+                                    }
+                                }
+                                .frame(width: 50)
+                                .onChange(of: totalTimeSeconds) { _ in
+                                    calculateRepetitionsFromTotalTime()
+                                }
+                                Text("s")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                                
+                                Button(action: {
+                                    isEditingTotalTime = false
+                                }) {
+                                    Text("✓")
+                                        .font(.caption)
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        } else {
+                            Button(action: {
+                                isEditingTotalTime = true
+                                updateTotalTimeFromRepetitions()
+                            }) {
+                                Text(formatTotalTime())
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                     
                     Button("Start") {
@@ -83,8 +154,21 @@ struct TimerContentView: View {
             .controlSize(.regular)
             .padding(.bottom, 10)
         }
-        .frame(width: 300, height: 270)
+        .frame(width: 300, height: 290)
         .padding(.horizontal, 10)
+        .onAppear {
+            updateTotalTimeFromRepetitions()
+        }
+        .onChange(of: intervalMinutes) { _ in
+            if !isEditingTotalTime {
+                updateTotalTimeFromRepetitions()
+            }
+        }
+        .onChange(of: intervalSeconds) { _ in
+            if !isEditingTotalTime {
+                updateTotalTimeFromRepetitions()
+            }
+        }
         .onDisappear {
             stopTimer()
         }
@@ -98,23 +182,28 @@ struct TimerContentView: View {
         timeRemaining = totalSeconds
         isRunning = true
         
-        // Notificar que o timer iniciou (para resetar o ícone)
-        NotificationCenter.default.post(name: NSNotification.Name("TimerStarted"), object: nil)
+        // Notificar a repetição atual
+        notifyRepetitionChanged()
+        // Notificar progresso inicial
+        notifyTimerProgress()
         
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             if timeRemaining > 0 {
                 timeRemaining -= 1
+                // Notificar progresso a cada segundo
+                notifyTimerProgress()
             } else {
                 // Timer terminou
                 playAlertSound()
-                
-                // Notificar que o timer acabou (para piscar o ícone)
-                NotificationCenter.default.post(name: NSNotification.Name("TimerFinished"), object: nil)
                 
                 if currentRepetition < numberOfRepetitions {
                     // Próxima repetição
                     currentRepetition += 1
                     timeRemaining = totalSeconds
+                    // Notificar mudança de repetição
+                    notifyRepetitionChanged()
+                    // Notificar progresso (resetado para nova repetição)
+                    notifyTimerProgress()
                 } else {
                     // Todas as repetições completas
                     stopTimer()
@@ -140,6 +229,35 @@ struct TimerContentView: View {
         return String(format: "%02d:%02d", minutes, secs)
     }
     
+    func formatTotalTime() -> String {
+        let intervalTotalSeconds = intervalMinutes * 60 + intervalSeconds
+        let totalSeconds = intervalTotalSeconds * numberOfRepetitions
+        
+        if totalSeconds == 0 {
+            return "0:00:00"
+        }
+        
+        let totalDays = totalSeconds / 86400
+        let remainingAfterDays = totalSeconds % 86400
+        let totalHours = remainingAfterDays / 3600
+        let remainingAfterHours = remainingAfterDays % 3600
+        let totalMinutes = remainingAfterHours / 60
+        let totalSecs = remainingAfterHours % 60
+        
+        if totalDays > 0 {
+            return String(format: "%d day%@ %d:%02d:%02d hours", 
+                         totalDays, 
+                         totalDays == 1 ? "" : "s",
+                         totalHours, 
+                         totalMinutes, 
+                         totalSecs)
+        } else if totalHours > 0 {
+            return String(format: "%d:%02d:%02d hours", totalHours, totalMinutes, totalSecs)
+        } else {
+            return String(format: "%d:%02d", totalMinutes, totalSecs)
+        }
+    }
+    
     func playAlertSound() {
         // Usar o som de sistema padrão
         NSSound.beep()
@@ -147,6 +265,55 @@ struct TimerContentView: View {
         // Alternativa: usar um som mais alto
         if let sound = NSSound(named: "Glass") {
             sound.play()
+        }
+    }
+    
+    func notifyRepetitionChanged() {
+        NotificationCenter.default.post(
+            name: NSNotification.Name("RepetitionChanged"),
+            object: nil,
+            userInfo: [
+                "current": currentRepetition,
+                "total": numberOfRepetitions
+            ]
+        )
+    }
+    
+    func notifyTimerProgress() {
+        let totalSeconds = intervalMinutes * 60 + intervalSeconds
+        NotificationCenter.default.post(
+            name: NSNotification.Name("TimerProgress"),
+            object: nil,
+            userInfo: [
+                "remaining": timeRemaining,
+                "total": totalSeconds
+            ]
+        )
+    }
+    
+    func updateTotalTimeFromRepetitions() {
+        let intervalTotalSeconds = intervalMinutes * 60 + intervalSeconds
+        let totalSeconds = intervalTotalSeconds * numberOfRepetitions
+        
+        totalTimeHours = totalSeconds / 3600
+        let remainingAfterHours = totalSeconds % 3600
+        totalTimeMinutes = remainingAfterHours / 60
+        totalTimeSeconds = remainingAfterHours % 60
+    }
+    
+    func calculateRepetitionsFromTotalTime() {
+        let intervalTotalSeconds = intervalMinutes * 60 + intervalSeconds
+        guard intervalTotalSeconds > 0 else { return }
+        
+        let totalTimeInSeconds = totalTimeHours * 3600 + totalTimeMinutes * 60 + totalTimeSeconds
+        let calculatedRepetitions = totalTimeInSeconds / intervalTotalSeconds
+        
+        if calculatedRepetitions > 0 && calculatedRepetitions <= 100 {
+            numberOfRepetitions = calculatedRepetitions
+        } else if calculatedRepetitions > 100 {
+            numberOfRepetitions = 100
+        } else {
+            numberOfRepetitions = 1
         }
     }
 }
