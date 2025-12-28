@@ -2,9 +2,9 @@ import SwiftUI
 import AVFoundation
 
 struct TimerContentView: View {
-    @State private var intervalMinutes: Int = 5
-    @State private var intervalSeconds: Int = 0
-    @State private var numberOfRepetitions: Int = 1
+    @AppStorage("lastIntervalMinutes") private var intervalMinutes: Int = 5
+    @AppStorage("lastIntervalSeconds") private var intervalSeconds: Int = 0
+    @AppStorage("lastNumberOfRepetitions") private var numberOfRepetitions: Int = 1
     @State private var isRunning: Bool = false
     @State private var timeRemaining: Int = 0
     @State private var currentRepetition: Int = 0
@@ -41,7 +41,7 @@ struct TimerContentView: View {
                         Text("Interval:")
                         Spacer()
                         Picker("", selection: $intervalMinutes) {
-                            ForEach(0..<60) { minute in
+                            ForEach(0..<301) { minute in
                                 Text("\(minute) min").tag(minute)
                             }
                         }

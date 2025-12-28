@@ -31,3 +31,5 @@ Para criar um projeto Xcode completo a partir destes arquivos:
 - Para fechar o app, clique com botão direito no ícone da menu bar e escolha "Quit"
 - Ou use ⌘Q quando o popover estiver aberto
 
+
+
